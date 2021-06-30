@@ -31,7 +31,7 @@ Labels are from `saiaprtc-12` <https://www.imageclef.org/SIAPRdata>
 
 ## Network Structure
 
-The network mainly consists of three part: imageNet, textNet and troplet loss function. Suppose the length of hashbit is 32.
+The network mainly consists of three part: imageNet, textNet and trplet loss function. Suppose the length of hashbit is 32.
 
 - ImageNet is a pretrained resnet-18 and it is fine-tuned during network training. 512-dim Image features are extracted by inputting raw pixels of images into imageNet. Finally with a fully connected layer, we will get a 32-dim hash feature.
 - TextNet is a pretrained Bert model. Similar to the imageNet part, annotation of an image,which is actually a sentence, is inputted into the textNet and a text feature is extracted. With a following fully connected layer, we will finally get a 32-dim hash feature also.

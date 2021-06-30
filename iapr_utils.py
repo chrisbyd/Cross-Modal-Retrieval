@@ -12,49 +12,63 @@ def default_loader(path):
 
 
 class MyDataset(torchdata.Dataset):
-    def __init__(self, args,txt,transform=None, loader=default_loader):
+    def __init__(self, args, data_list_path ,transform=None, loader=default_loader):
         self.transform = transform
         self.loader = loader
-
-        name_label = []
-        for line in open(txt):
-            line = line.strip('\n').split()
-            label = list(map(int, np.array(line[len(line)-255:]))) #后255个二进制码是label的，前2912个是单词在词袋中的二进制编码
-            tem = re.split('[/.]', line[0])
-            file_name, sample_name = tem[0], tem[1]
-            name_label.append([file_name, sample_name, label])
-            # # print('label = ', label)
-            # print('file_name = %s,  sample_name = %s' %(file_name, sample_name))
-            # label_list = np.where(label=='1')
-            # print('label_list = ', label_list)
-        self.name_label = name_label
-        self.image_dir=args.image_dir
-        self.text_dir = args.text_dir
+        self.data_list_path = data_list_path
+        self.data_root =  args.data_root
+        self.raw_to_new_label = self.construct_label_dic()
+        self.data = self.get_data()
+    
+    def get_data(self):
+        data = []
+        with open(self.data_list_path, 'r') as f:
+            data_lines = f.readlines()
+            for data_line in data_lines:
+                img_path = os.path.join(self.data_root,data_line.split(";")[0])
+                new_label = [self.raw_to_new_label[int(label)] for label in data_line.split(";")[1].split()]
+                binary_label = self.new_label_to_binary(new_label)
+                data.append((img_path, binary_label, data_line.split(";")[2]))
+        return data
+    
+    def construct_label_dic(self):
+        all_label_path = os.path.join(self.data_root,'imid_anno_label.txt')
+        label_set = set()
+        with open(all_label_path, 'r') as f:
+            data_lines = f.readlines()
+            for data_line in data_lines:
+                labels = data_line.split(";")[2].split()
+                for label in labels:
+                    label_set.add(int(label))
+        label_to_new = {}
+        for index, label in enumerate(label_set):
+            label_to_new[label] = index
+        return label_to_new
+        
+    def new_label_to_binary(self, new_label_list):
+        a = np.zeros(255,np.float32)
+        a[new_label_list] = 1
+        return a      
 
 
     def __getitem__(self, index):
-        words = self.name_label[index]  # words = [file_name, sample_name, label]
-        # print('words = ', words[0:2])
+     
 
-        img_path = os.path.join(self.image_dir, words[0], words[1]+'.jpg')
-        text_path = os.path.join(self.text_dir, words[0], words[1]+'.txt')
+        img_path, label, text = self.data[index]
+        img_path = img_path.strip()
         # img
         img = self.loader(img_path)
         if self.transform is not None:
             img = self.transform(img)
         # text
-        text = 'None'
-        for line in open(text_path):
-            text = '[CLS]' + line + '[SEP]'
+        text = '[CLS]'+' ' + text + " "+ '[SEP]'
             
-        # label
-        label = torch.LongTensor(words[2])
 
         return img, text, label
         
 
     def __len__(self):
-        return len(self.name_label)
+        return len(self.data)
 
 
 def IAPR_dataloader(args):
@@ -74,18 +88,18 @@ def IAPR_dataloader(args):
     ])
 
 
-    root = args.root_dir
-    train_file = os.path.join(root, 'iapr_train')
-    test_file = os.path.join(root, 'iapr_test')
-    retrieval_file = os.path.join(root, 'iapr_retrieval')
+    root = args.data_root
+    train_file = os.path.join(root, 'train.txt')
+    test_file = os.path.join(root, 'test.txt')
+    retrieval_file = os.path.join(root, 'database.txt')
 
-    train_set = MyDataset(args,txt=train_file, transform=transform_train)
+    train_set = MyDataset(args, data_list_path=train_file, transform=transform_train)
     train_loader = torchdata.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    test_set = MyDataset(args,txt=test_file, transform=transform_test)
+    test_set = MyDataset(args,data_list_path=test_file, transform=transform_test)
     test_loader = torchdata.DataLoader(test_set, batch_size=args.batch_size, shuffle=False, num_workers=4)
 
-    db_set = MyDataset(args,txt=retrieval_file, transform=transform_test)
+    db_set = MyDataset(args,data_list_path=retrieval_file, transform=transform_test)
     db_loader = torchdata.DataLoader(db_set, batch_size=args.batch_size, shuffle=False, num_workers=4)
 
     return train_loader, test_loader, db_loader

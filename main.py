@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--cv_dir', default='checkpoints')
 
     parser.add_argument('--root_dir',type=str, default='/home/disk1/zhaoyuying/dataset/iapr-tc12_255labels')
-    parser.add_argument('--image_dir', type=str, default='/home/disk1/zhaoyuying/dataset/iapr-tc12_255labels/JPEGImages')
+    parser.add_argument('--data_root', type=str, default='./data/iaprtc12')
     parser.add_argument('--text_dir', type=str, default='/home/disk1/zhaoyuying/dataset/iapr-tc12_255labels/annotations')
     # -----------------------------------------------------------------------------------
     args = parser.parse_args()
@@ -50,7 +50,7 @@ def train(args, epoch):
         len_triplets = CrossModel_triplet_loss(image_hashCodes, text_hashCodes, labels, args.margin)
 
         loss = imgae_triplet_loss + text_triplet_loss + imgae_text_triplet_loss + text_image_triplet_loss
-
+        print(f'Epoch　{epoch}: batch: {batch_idx}, the total loss is {loss} ')
         if len_triplets > 0:
             # 计算网络的梯度，先更新imageNet部分，此时梯度已经用掉了。然后再backward计算一次梯度，然后更新textNet
             # optimizer_image.zero_grad()
@@ -83,13 +83,13 @@ def test(args,epoch):
     ti_mAP = compute_mAP_MultiLabels(db_image_binary, tst_text_binary, db_label, tst_label)
     print("epoch: %d, retrieval it_mAP: %.6f, retrieval ti_mAP: %.6f" %(epoch, it_mAP, ti_mAP))
 
-    f = open('result/' + args.cv_dir + 'mAP.txt', 'a')
+    f = open('./results/' + 'map/' + 'mAP.txt', 'a')
     f.write('Epoch:'+str(epoch)+':  it_mAP = '+str(it_mAP)+', ti_mAP = '+str(ti_mAP)+'\n')
     f.close()
 
     if epoch%50 == 0:
-        torch.save(imageNet.state_dict(), args.cv_dir+'/ckpt_E%d_it_mAP_%.5f_ti_mAP_%.5f_imageNet.t7'%(epoch, it_mAP, ti_mAP))
-        torch.save(textNet.state_dict(), args.cv_dir+'/ckpt_E%d_it_mAP_%.5f_ti_mAP_%.5f_textHashNet.t7'%(epoch, it_mAP, ti_mAP))
+        torch.save(imageNet.state_dict(),'./results/'+ args.cv_dir+'/ckpt_E%d_it_mAP_%.5f_ti_mAP_%.5f_imageNet.t7'%(epoch, it_mAP, ti_mAP))
+        torch.save(textNet.state_dict(),'./results/' + args.cv_dir+'/ckpt_E%d_it_mAP_%.5f_ti_mAP_%.5f_textHashNet.t7'%(epoch, it_mAP, ti_mAP))
 
 if __name__ == '__main__':
     args=get_args()
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     imageNet.cuda()
     # text net
     # tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') #翻不了墙，无法下载下来
-    tokenizer = BertTokenizer.from_pretrained('/home/disk1/zhaoyuying/models/tokenization_bert/bert-base-uncased-vocab.txt')
+    tokenizer = BertTokenizer.from_pretrained('./bert_pretrain/bert-base-uncased-vocab.txt')
 
     textNet = TextNet(code_length=args.hashbits)
     textNet.cuda()

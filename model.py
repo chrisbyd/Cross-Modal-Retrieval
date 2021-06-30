@@ -21,8 +21,8 @@ class TextNet(nn.Module):
     def __init__(self,  code_length):
         super(TextNet, self).__init__()
 
-        modelConfig = BertConfig.from_pretrained('/home/disk1/zhaoyuying/models/modeling_bert/bert-base-uncased-config.json')
-        self.textExtractor = BertModel.from_pretrained('/home/disk1/zhaoyuying/models/modeling_bert/bert-base-uncased-pytorch_model.bin', config=modelConfig)
+        modelConfig = BertConfig.from_pretrained('./bert_pretrain/bert-base-uncased-config.json')
+        self.textExtractor = BertModel.from_pretrained('./bert_pretrain/bert-base-uncased-pytorch_model.bin', config=modelConfig)
         embedding_dim = self.textExtractor.config.hidden_size
 
         self.fc = nn.Linear(embedding_dim, code_length)
