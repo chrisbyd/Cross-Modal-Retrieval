@@ -53,7 +53,6 @@ class MyDataset(torchdata.Dataset):
 
     def __getitem__(self, index):
      
-
         img_path, label, text = self.data[index]
         img_path = img_path.strip()
         # img
@@ -61,14 +60,13 @@ class MyDataset(torchdata.Dataset):
         if self.transform is not None:
             img = self.transform(img)
         # text
-        text = '[CLS]'+' ' + text + " "+ '[SEP]'
-            
-
+        text = '[CLS]' + " "  + text + " "+ '[SEP]'
         return img, text, label
         
 
     def __len__(self):
         return len(self.data)
+    
 
 
 def IAPR_dataloader(args):

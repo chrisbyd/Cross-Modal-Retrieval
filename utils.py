@@ -3,6 +3,7 @@ from iapr_utils import *
 import time
 import itertools
 from torch.autograd import Variable
+import torch.nn as nn
 
 def get_tokens(texts,tokenizer):
     tokens, segments, input_masks = [], [], []
@@ -78,6 +79,16 @@ def triplet_loss(Ihash, labels, margin):#单模态的triplet loss
 
     return triplet_loss, length
 
+def multi_label_classification(features,labels):
+    pass
+
+
+def modality_specific_classification_loss(image_feature,txt_feature,labels):
+    BCE = nn.BCEWithLogitsLoss()
+    image_loss = BCE(image_feature, labels)
+    text_loss = BCE(txt_feature, labels)
+    return image_loss + text_loss
+
 
 def CrossModel_triplet_loss(imgae_Ihash, text_Ihash, labels, margin):
     triplet_loss = torch.tensor(0.0).cuda()
@@ -136,19 +147,19 @@ def compute_result_CrossModel(dataloader, imageNet, textHashNet,tokenizer):
         # image
         with torch.no_grad():
             images, labels = Variable(images).cuda(), Variable(labels).cuda()
-        image_hashCodes = imageNet.forward(images)
-        # image_hashCodes = torch.tanh(image_hashCodes)
+            image_hashCodes = imageNet.forward(images)
+            # image_hashCodes = torch.tanh(image_hashCodes)
 
-        # text
-        tokens, segments, input_masks = get_tokens(texts,tokenizer)
-        # output = textExtractor(tokens, token_type_ids=segments, attention_mask=input_masks)
-        # text_embeddings = output[0][:, 0, :]
-        # text_hashCodes = textHashNet.forward(text_embeddings)
-        # text_hashCodes = torch.tanh(text_hashCodes)
-        text_hashCodes = textHashNet.forward(tokens, segments, input_masks)
+            # text
+            tokens, segments, input_masks = get_tokens(texts,tokenizer)
+            # output = textExtractor(tokens, token_type_ids=segments, attention_mask=input_masks)
+            # text_embeddings = output[0][:, 0, :]
+            # text_hashCodes = textHashNet.forward(text_embeddings)
+            # text_hashCodes = torch.tanh(text_hashCodes)
+            text_hashCodes = textHashNet.forward(tokens, segments, input_masks)
 
-        bs_image.append(image_hashCodes.data.cpu())
-        bs_text.append(text_hashCodes.data.cpu())
+            bs_image.append(image_hashCodes.data.cpu())
+            bs_text.append(text_hashCodes.data.cpu())
 
     total_time = time.time() - time_start
 
