@@ -3,6 +3,7 @@ from iapr_utils import *
 import time
 import itertools
 from torch.autograd import Variable
+from tqdm import tqdm
 
 def get_tokens(texts,tokenizer):
     tokens, segments, input_masks = [], [], []
@@ -130,7 +131,7 @@ def compute_result_CrossModel(dataloader, imageNet, textHashNet,tokenizer):
 
     time_start = time.time()
 
-    for batch_idx, (images, texts, labels) in enumerate(dataloader):
+    for batch_idx, (images, texts, labels) in tqdm(enumerate(dataloader)):
         clses.append(labels.data.cpu())
 
         # image
