@@ -23,7 +23,9 @@ def main(_config):
     )
     dm = HashDataModule(config= config)
     model = CrossRetrievalModel(config= config)
-    pretrained_file = './pretrained_dir/ViT-B_32.npz'
+    pretrained_file = {}
+    pretrained_file['vision'] = './pretrained_dir/ViT-B_32.npz'
+    pretrained_file['text'] = './pretrained_dir/bert_pretrain/bert_model.ckpt'
     model.load_model(None,pretrained_file)
 
     if not config["test_only"]:

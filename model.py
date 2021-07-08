@@ -3,15 +3,16 @@ import torch.optim as optim
 from pytorch_transformers import BertTokenizer, BertModel, BertForMaskedLM, BertConfig
 from  networks import TextNet
 from  networks import ImageNet
-from  utils import CrossModel_triplet_loss, Variable, get_tokens, compute_result_CrossModel, compute_mAP_MultiLabels
+from  utils.utils import CrossModel_triplet_loss, Variable, get_tokens, compute_result_CrossModel, compute_mAP_MultiLabels
 from networks import VisionTransformerHash
+from networks import TextTransformerHash
 import torch
 
 class CrossRetrievalModel(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.text_net = TextNet(hash_length = config['hash_length'])
+        self.text_net = TextTransformerHash(self.config)
         self.image_net = VisionTransformerHash(config= self.config)
         self.tokenizer = BertTokenizer.from_pretrained('./pretrained_dir/bert_pretrain/bert-base-uncased-vocab.txt')
         self.previous_epoch = -1
@@ -75,7 +76,8 @@ class CrossRetrievalModel(pl.LightningModule):
             self.load_state_dict()
             pass
         elif pretrained_file is not None:
-            self.image_net.load_from(pretrained_file)
+            self.text_net.load_from(pretrained_file['text'])
+            self.image_net.load_from(pretrained_file['vision'])
         else:
             raise NotImplementedError("U need either supply a checkpoint or a pretrained file")
 
