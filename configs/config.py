@@ -26,7 +26,7 @@ def config():
     #log config
     log_dir = './results/'
     log_interval = 10
-    val_check_interval =  1000
+    val_check_interval =  313
 
     #from checkpoint
     load_path = ''

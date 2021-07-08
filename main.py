@@ -20,8 +20,6 @@ def main(_config):
         max_epochs = config['max_epochs'],
         logger = logger,
         log_every_n_steps= config['log_interval'],
-        val_check_interval= config['val_check_interval'],
-        check_val_every_n_epoch= 1,
     )
     dm = HashDataModule(config= config)
     model = CrossRetrievalModel(config= config)

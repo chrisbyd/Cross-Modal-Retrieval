@@ -37,11 +37,7 @@ class HashDataModule(LightningDataModule):
 
     def train_dataloader(self):
         train_loader = DataLoader(self.t_data_set, batch_size= self.config['batch_size'], shuffle= True, num_workers =4)
-        return train_loader
-
-    def val_dataloader(self):
-        test_loader = DataLoader(self.test_set, batch_size=self.config['batch_size'], shuffle=False, num_workers=4)
-        return test_loader
+        return train_loader 
 
     def query_loader(self):
         query_loader = DataLoader(self.q_data_set, batch_size=self.config['batch_size'], shuffle=False, num_workers=4)
