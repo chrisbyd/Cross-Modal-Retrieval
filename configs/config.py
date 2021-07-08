@@ -8,6 +8,8 @@ def config():
     seed = 0
     dataset_name = 'iaprtc12'
     batch_size = 32
+
+    crop_size = 224
     max_epochs = 300
     hash_length = 32
 

@@ -4,6 +4,7 @@ from pytorch_transformers import BertTokenizer, BertModel, BertForMaskedLM, Bert
 from  networks import TextNet
 from  networks import ImageNet
 from  utils import CrossModel_triplet_loss, Variable, get_tokens, compute_result_CrossModel, compute_mAP_MultiLabels
+from networks import VisionTransformerHash
 import torch
 
 class CrossRetrievalModel(pl.LightningModule):
@@ -11,8 +12,8 @@ class CrossRetrievalModel(pl.LightningModule):
         super().__init__()
         self.config = config
         self.text_net = TextNet(hash_length = config['hash_length'])
-        self.image_net = ImageNet(hash_length = config['hash_length'])
-        self.tokenizer = BertTokenizer.from_pretrained('bert_pretrain/bert-base-uncased-vocab.txt')
+        self.image_net = VisionTransformerHash(config= self.config)
+        self.tokenizer = BertTokenizer.from_pretrained('./pretrained_dir/bert_pretrain/bert-base-uncased-vocab.txt')
         self.previous_epoch = -1
 
 
@@ -68,6 +69,17 @@ class CrossRetrievalModel(pl.LightningModule):
         print(f" the i-to-I mAP is {it_mAP}, the T-to-i mAP is {ti_mAP}")
         self.log("retrieval image to text mAP" , it_mAP)
         self.log("retrieval text to image mAP" , ti_mAP)
+
+    def load_model(self, checkpoint_file, pretrained_file):
+        if checkpoint_file is not None:
+            self.load_state_dict()
+            pass
+        elif pretrained_file is not None:
+            self.image_net.load_from(pretrained_file)
+        else:
+            raise NotImplementedError("U need either supply a checkpoint or a pretrained file")
+
+
 
 
 

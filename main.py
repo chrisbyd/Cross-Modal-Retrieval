@@ -23,6 +23,8 @@ def main(_config):
     )
     dm = HashDataModule(config= config)
     model = CrossRetrievalModel(config= config)
+    pretrained_file = './pretrained_dir/ViT-B_32.npz'
+    model.load_model(None,pretrained_file)
 
     if not config["test_only"]:
         trainer.fit(model, datamodule= dm)
