@@ -1,48 +1,79 @@
-import torchvision.models as models
-import torch
-import torch.nn as nn
+import  pytorch_lightning as pl
+import torch.optim as optim
 from pytorch_transformers import BertTokenizer, BertModel, BertForMaskedLM, BertConfig
+from  networks import TextNet
+from  networks import ImageNet
+from  utils import CrossModel_triplet_loss, Variable, get_tokens, compute_result_CrossModel, compute_mAP_MultiLabels
+import torch
+
+class CrossRetrievalModel(pl.LightningModule):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.text_net = TextNet(hash_length = config['hash_length'])
+        self.image_net = ImageNet(hash_length = config['hash_length'])
+        self.tokenizer = BertTokenizer.from_pretrained('bert_pretrain/bert-base-uncased-vocab.txt')
+        self.previous_epoch = -1
 
 
-class ImageNet(nn.Module):
-    def __init__(self, hash_length, num_classes):
-        super(ImageNet, self).__init__()
-        self.resnet = models.resnet18(pretrained=True)
-        
-        #self.fc = nn.Linear(1000,512)
-        self.classifier = nn.Linear(1000,num_classes)
-        self.hash = nn.Linear(1000,hash_length)
-        self.tanh=torch.nn.Tanh() 
+    def configure_optimizers(self):
+        optimier = optim.Adam(list(self.image_net.parameters())+list(self.text_net.parameters()),
+                              lr = self.config['lr'], weight_decay=self.config['weight_decay'])
+        return optimier
 
-    def forward(self, x):
-        raw_feature =self.resnet(x)
-        
-        hash_feature = self.hash(raw_feature)
-        hash_feature=self.tanh(hash_feature)
-        if self.training:
-            class_feature = self.classifier(raw_feature)
-            return class_feature, hash_feature
-        return hash_feature
+    def forward_image(self, image_input):
+        image_feature = self.image_net(image_input)
+        return  image_feature
+
+    def forward_text(self, tokens, segments, input_masks):
+        text_feature = self.text_net(tokens, segments, input_masks)
+        return text_feature
+
+    def forward_all(self, image_input, text_input):
+        images = Variable(image_input)
+        image_feature = self.forward_image(images)
+        # text
+        tokens, segments, input_masks = get_tokens(text_input, self.tokenizer)
+        text_feature = self.forward_text(tokens, segments, input_masks)
+
+        return image_feature, text_feature
+
+    def training_step(self, batch, batch_index):
+        images, texts, labels = batch
+        image_hash_feature, text_hash_feature = self.forward_all(images, texts)
+        image_triplet_loss, text_triplet_loss, \
+        image_text_triplet_loss, text_image_triplet_loss, \
+        len_triplets = CrossModel_triplet_loss(image_hash_feature, text_hash_feature, labels, self.config['margin'])
+
+        loss = image_triplet_loss + text_triplet_loss + image_text_triplet_loss + text_image_triplet_loss
+        with torch.no_grad():
+            if self.current_epoch % self.config['eval_interval'] == 0 and self.previous_epoch != self.current_epoch:
+                self.validation()
+                self.previous_epoch = self.current_epoch
+        self.log('Training bi-directional triplet loss', loss)
+        return  loss
+
+    def validation(self):
+        query_loader = self.trainer.datamodule.query_loader()
+        gallery_loader = self.trainer.datamodule.gallery_loader()
+        print("Start computing the hash codes for images and texts")
+        tst_image_binary, tst_text_binary, tst_label, tst_time = compute_result_CrossModel(query_loader, self.image_net,
+                                                                                           self.text_net, self.tokenizer)
+        db_image_binary, db_text_binary, db_label, db_time = compute_result_CrossModel(gallery_loader, self.image_net, self.text_net,
+                                                                                       self.tokenizer)
+        # print('test_codes_time = %.6f, db_codes_time = %.6f'%(tst_time ,db_time))
+        print("Start computing mAP")
+        it_mAP = compute_mAP_MultiLabels(db_text_binary, tst_image_binary, db_label, tst_label)
+        ti_mAP = compute_mAP_MultiLabels(db_image_binary, tst_text_binary, db_label, tst_label)
+        print(f" the i-to-I mAP is {it_mAP}, the T-to-i mAP is {ti_mAP}")
+        self.log("retrieval image to text mAP" , it_mAP)
+        self.log("retrieval text to image mAP" , ti_mAP)
 
 
-class TextNet(nn.Module):
-    def __init__(self,  code_length, num_classes):
-        super(TextNet, self).__init__()
 
-        modelConfig = BertConfig.from_pretrained('./bert_pretrain/bert-base-uncased-config.json')
-        self.textExtractor = BertModel.from_pretrained('./bert_pretrain/bert-base-uncased-pytorch_model.bin', config=modelConfig)
-        embedding_dim = self.textExtractor.config.hidden_size
-        self.classifier = nn.Linear(embedding_dim, num_classes)
-        self.fc = nn.Linear(embedding_dim, code_length)
-        self.tanh = torch.nn.Tanh()
 
-    def forward(self, tokens, segments, input_masks):
-        output=self.textExtractor(tokens, token_type_ids=segments, attention_mask=input_masks)
-        text_embeddings = output[0][:, 0, :]  #output[0](batch size, sequence length, model hidden dimension)
-         
-        hash_features = self.fc(text_embeddings)
-        hash_features=self.tanh(hash_features)
-        if self.training:
-            class_features = self.classifier(text_embeddings)
-            return class_features, hash_features
-        return hash_features
+
+
+
+
+
