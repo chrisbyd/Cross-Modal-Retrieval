@@ -4,6 +4,7 @@ from pytorch_transformers import BertTokenizer, BertModel, BertForMaskedLM, Bert
 from  networks import TextNet
 from  networks import ImageNet
 from  utils import CrossModel_triplet_loss, Variable, get_tokens, compute_result_CrossModel, compute_mAP_MultiLabels
+import torch
 
 class CrossRetrievalModel(pl.LightningModule):
     def __init__(self, config):
@@ -45,9 +46,10 @@ class CrossRetrievalModel(pl.LightningModule):
         len_triplets = CrossModel_triplet_loss(image_hash_feature, text_hash_feature, labels, self.config['margin'])
 
         loss = image_triplet_loss + text_triplet_loss + image_text_triplet_loss + text_image_triplet_loss
-        if self.current_epoch % self.config['eval_interval'] == 0 and self.previous_epoch != self.current_epoch:
-            self.validation()
-            self.previous_epoch = self.current_epoch
+        with torch.no_grad():
+            if self.current_epoch % self.config['eval_interval'] == 0 and self.previous_epoch != self.current_epoch:
+                self.validation()
+                self.previous_epoch = self.current_epoch
         self.log('Training bi-directional triplet loss', loss)
         return  loss
 
