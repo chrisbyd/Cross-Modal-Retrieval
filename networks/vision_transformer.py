@@ -270,12 +270,13 @@ class VisionTransformerHash(nn.Module):
         self.module_name = "Vision Transformer"
         self.transformer = Transformer(config, config["crop_size"])
         self.hash_layer = Linear(config["dim"], config["hash_length"])
+        self.tanh = torch.nn.Tanh()
 
     def forward(self, x, labels=None):
         x = self.transformer(x)
 
         origin_feature = x[:, 0]
-        hash_feature = self.hash_layer(x[:, 0])
+        hash_feature = self.tanh(self.hash_layer(x[:, 0]))
         return hash_feature
 
     def load_from(self, weight_path):
