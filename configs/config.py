@@ -19,6 +19,9 @@ def config():
     weight_decay = 0.0005
     margin = 12
 
+    #evaluate interval
+    eval_interval = 10
+
     #gpu training
     num_gpus = 1
     precision = 16

@@ -12,6 +12,7 @@ class CrossRetrievalModel(pl.LightningModule):
         self.text_net = TextNet(hash_length = config['hash_length'])
         self.image_net = ImageNet(hash_length = config['hash_length'])
         self.tokenizer = BertTokenizer.from_pretrained('bert_pretrain/bert-base-uncased-vocab.txt')
+        self.previous_epoch = -1
 
 
     def configure_optimizers(self):
@@ -44,10 +45,9 @@ class CrossRetrievalModel(pl.LightningModule):
         len_triplets = CrossModel_triplet_loss(image_hash_feature, text_hash_feature, labels, self.config['margin'])
 
         loss = image_triplet_loss + text_triplet_loss + image_text_triplet_loss + text_image_triplet_loss
-        previous_epoch = -1 
-        if self.current_epoch % 10 == 0 and previous_epoch != self.current_epoch:
+        if self.current_epoch % self.config['eval_interval'] == 0 and self.previous_epoch != self.current_epoch:
             self.validation()
-            previous_epoch = self.current_epoch
+            self.previous_epoch = self.current_epoch
         self.log('Training bi-directional triplet loss', loss)
         return  loss
 

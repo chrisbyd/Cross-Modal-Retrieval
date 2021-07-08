@@ -1,5 +1,5 @@
 __pycache__
-bert_pretrain/
+bert_pretrain
 data/
 results/
 .idea
