@@ -162,6 +162,7 @@ class TextTransformerHash(nn.Module):
         self.transformer = Transformer(cfg=cfg)
         self.cfg = cfg
         self.hash_layer = Linear(self.cfg["dim"], self.cfg["hash_length"])
+        self.tanh = torch.nn.Tanh()
 
     def forward(self, tokens, segments, input_masks):
 
@@ -171,7 +172,7 @@ class TextTransformerHash(nn.Module):
 
         origin_feature = x[:, 0]
 
-        hash_feature = self.hash_layer(x[:, 0])
+        hash_feature = self.tanh(self.hash_layer(x[:, 0]))
         return hash_feature
 
     def load_from(self, weight_path):
