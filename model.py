@@ -12,7 +12,7 @@ class CrossRetrievalModel(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.text_net = TextTransformerHash(self.config)
+        self.text_net = TextTransformerHash(config)
         self.image_net = VisionTransformerHash(config= self.config)
         self.tokenizer = BertTokenizer.from_pretrained('./pretrained_dir/bert_pretrain/bert-base-uncased-vocab.txt')
         self.previous_epoch = -1

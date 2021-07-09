@@ -51,7 +51,7 @@ class Embeddings(nn.Module):
 
     def __init__(self, cfg):
         super().__init__()
-        self.tok_embed = nn.Embedding(cfg["vocab_size"], cfg["dim"]).cuda()  # token embedding
+        self.tok_embed = nn.Embedding(cfg["vocab_size"], cfg["dim"]).cuda()  # token  embedding
         self.pos_embed = nn.Embedding(cfg["max_len"], cfg["dim"]).cuda()  # position embedding
         self.seg_embed = nn.Embedding(cfg["n_segments"], cfg["dim"]).cuda()  # segment(token type) embedding
 
@@ -70,29 +70,31 @@ class Embeddings(nn.Module):
 
 class MultiHeadedSelfAttention(nn.Module):
     """ Multi-Headed Dot Product Attention """
-
     def __init__(self, cfg):
         super().__init__()
-        self.proj_q = nn.Linear(cfg["dim"], cfg["dim"])
-        self.proj_k = nn.Linear(cfg["dim"], cfg["dim"])
-        self.proj_v = nn.Linear(cfg["dim"], cfg["dim"])
-        self.drop = nn.Dropout(cfg["p_drop_attn"])
-        self.scores = None  # for visualization
-        self.n_heads = cfg["n_heads"]
+        self.proj_q = nn.Linear(cfg['dim'], cfg['dim'])
+        self.proj_k = nn.Linear(cfg['dim'], cfg['dim'])
+        self.proj_v = nn.Linear(cfg['dim'], cfg['dim'])
+        self.drop = nn.Dropout(cfg['p_drop_attn'])
+        self.scores = None # for visualization
+        self.n_heads = cfg['n_heads']
 
-    def forward(self, x):
+    def forward(self, x, mask):
         """
         x, q(query), k(key), v(value) : (B(batch_size), S(seq_len), D(dim))
         mask : (B(batch_size) x S(seq_len))
         * split D(dim) into (H(n_heads), W(width of head)) ; D = H * W
         """
         # (B, S, D) -proj-> (B, S, D) -split-> (B, S, H, W) -trans-> (B, H, S, W)
+
         q, k, v = self.proj_q(x), self.proj_k(x), self.proj_v(x)
         q, k, v = (split_last(x, (self.n_heads, -1)).transpose(1, 2)
                    for x in [q, k, v])
         # (B, H, S, W) @ (B, H, W, S) -> (B, H, S, S) -softmax-> (B, H, S, S)
         scores = q @ k.transpose(-2, -1) / np.sqrt(k.size(-1))
-
+        if mask is not None:
+            mask = mask[:, None, None, :].float()
+            scores -= 10000.0 * (1.0 - mask)
         scores = self.drop(F.softmax(scores, dim=-1))
         # (B, H, S, S) @ (B, H, S, W) -> (B, H, S, W) -trans-> (B, S, H, W)
         h = (scores @ v).transpose(1, 2).contiguous()
@@ -128,8 +130,8 @@ class Block(nn.Module):
         self.norm2 = LayerNorm(cfg)
         self.drop = nn.Dropout(cfg["p_drop_hidden"])
 
-    def forward(self, x):
-        h = self.attn(x)
+    def forward(self, x, mask):
+        h = self.attn(x, mask)
         h = self.norm1(x + self.drop(self.proj(h)))
         h = self.norm2(h + self.drop(self.pwff(h)))
         return h
@@ -137,17 +139,18 @@ class Block(nn.Module):
 
 class Transformer(nn.Module):
     """ Transformer with Self-Attentive Blocks"""
-
     def __init__(self, cfg):
         super().__init__()
         self.embed = Embeddings(cfg)
-        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg["n_layers"])])
+        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg['n_layers'])])
 
-    def forward(self, x, seg):
+    def forward(self, x, seg, mask):
         h = self.embed(x, seg)
         for block in self.blocks:
-            h = block(h)
+            h = block(h, mask)
         return h
+
+
 
 
 class TextTransformerHash(nn.Module):
@@ -160,11 +163,14 @@ class TextTransformerHash(nn.Module):
         self.cfg = cfg
         self.hash_layer = Linear(self.cfg["dim"], self.cfg["hash_length"])
 
-    def forward(self, input):
-        input_ids, seg_ids = input[:, 0, :], input[:, 1, :]
+    def forward(self, tokens, segments, input_masks):
 
-        x = self.transformer(input_ids, seg_ids)
+
+        x = self.transformer(tokens, segments, input_masks)
+
+
         origin_feature = x[:, 0]
+
         hash_feature = self.hash_layer(x[:, 0])
         return hash_feature
 
@@ -173,13 +179,6 @@ class TextTransformerHash(nn.Module):
         if weight_path.endswith('.ckpt'):  # checkpoint file in tensorflow
             print("Start loading ckpt")
             checkpoint.load_model(self.transformer, weight_path)
-        elif weight_path.endswith('.pt'):  # pretrain model file in pytorch
-            self.transformer.load_state_dict(
-                {key[12:]: value
-                 for key, value in torch.load(weight_path).items()
-                 if key.startswith('transformer')}
-            )  # load only transformer parts
-        print("successfully loaded the bert ")
 
 
 

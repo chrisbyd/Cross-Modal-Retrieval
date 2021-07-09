@@ -20,6 +20,8 @@ class TextNet(nn.Module):
 
     def forward(self, tokens, segments, input_masks):
         output=self.textExtractor(tokens, token_type_ids=segments, attention_mask=input_masks)
+        print("output has shape", output[0].shape)
+        exit()
         text_embeddings = output[0][:, 0, :]  #output[0](batch size, sequence length, model hidden dimension)
 
 
