@@ -254,7 +254,7 @@ class VisionTransformerHash(nn.Module):
         self.config = config
         self.transformer = Transformer(config, config["crop_size"], vis)
         self.hash_layer = Linear(config['dim'], config['hash_length'])
-
+        self.tanh = torch.nn.Tanh()
 
 
     def forward(self, x):
@@ -262,7 +262,7 @@ class VisionTransformerHash(nn.Module):
 
 
 
-        hash_feature = self.hash_layer(x[:,0])
+        hash_feature = self.tanh(self.hash_layer(x[:,0]))
 
         return hash_feature
 
