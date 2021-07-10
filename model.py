@@ -7,28 +7,27 @@ from  utils.utils import CrossModel_triplet_loss, Variable, get_tokens, compute_
 from networks import VisionTransformerHash
 from networks import TextTransformerHash
 import torch
-
+from networks.uniformer import Uniformer
 class CrossRetrievalModel(pl.LightningModule):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.text_net = TextTransformerHash(config)
-        self.image_net = VisionTransformerHash(config= self.config)
+        self.uniformer = Uniformer(config= config)
         self.tokenizer = BertTokenizer.from_pretrained('./pretrained_dir/bert_pretrain/bert-base-uncased-vocab.txt')
         self.previous_epoch = -1
 
 
     def configure_optimizers(self):
-        optimier = optim.Adam(list(self.image_net.parameters())+list(self.text_net.parameters()),
+        optimier = optim.Adam(list(self.uniformer.parameters()),
                               lr = self.config['lr'], weight_decay=self.config['weight_decay'])
         return optimier
 
     def forward_image(self, image_input):
-        image_feature = self.image_net(image_input)
+        image_feature = self.uniformer.forward_image(image_input)
         return  image_feature
 
     def forward_text(self, tokens, segments, input_masks):
-        text_feature = self.text_net(tokens, segments, input_masks)
+        text_feature = self.uniformer.forward_text(tokens, segments, input_masks)
         return text_feature
 
     def forward_all(self, image_input, text_input):
@@ -59,9 +58,9 @@ class CrossRetrievalModel(pl.LightningModule):
         query_loader = self.trainer.datamodule.query_loader()
         gallery_loader = self.trainer.datamodule.gallery_loader()
         print("Start computing the hash codes for images and texts")
-        tst_image_binary, tst_text_binary, tst_label, tst_time = compute_result_CrossModel(query_loader, self.image_net,
-                                                                                           self.text_net, self.tokenizer)
-        db_image_binary, db_text_binary, db_label, db_time = compute_result_CrossModel(gallery_loader, self.image_net, self.text_net,
+        tst_image_binary, tst_text_binary, tst_label, tst_time = compute_result_CrossModel(query_loader, self.uniformer,
+                                                                                            self.tokenizer)
+        db_image_binary, db_text_binary, db_label, db_time = compute_result_CrossModel(gallery_loader, self.uniformer,
                                                                                        self.tokenizer)
         # print('test_codes_time = %.6f, db_codes_time = %.6f'%(tst_time ,db_time))
         print("Start computing mAP")
@@ -76,8 +75,7 @@ class CrossRetrievalModel(pl.LightningModule):
             self.load_state_dict()
             pass
         elif pretrained_file is not None:
-            self.text_net.load_from(pretrained_file['text'])
-            self.image_net.load_from(pretrained_file['vision'])
+            self.uniformer.load_model(pretrained_file = pretrained_file)
         else:
             raise NotImplementedError("U need either supply a checkpoint or a pretrained file")
 

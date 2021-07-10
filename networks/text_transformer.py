@@ -142,7 +142,7 @@ class Transformer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.embed = Embeddings(cfg)
-        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg['n_layers'])])
+        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg['n_text_layers'])])
 
     def forward(self, x, seg, mask):
         h = self.embed(x, seg)

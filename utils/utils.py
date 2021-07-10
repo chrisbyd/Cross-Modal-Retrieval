@@ -126,7 +126,7 @@ def CrossModel_triplet_loss(imgae_Ihash, text_Ihash, labels, margin):
     return imgae_triplet_loss, text_triplet_loss, imgae_text_triplet_loss, text_image_triplet_loss, length
 
 
-def compute_result_CrossModel(dataloader, imageNet, textHashNet,tokenizer):
+def compute_result_CrossModel(dataloader, uniformer,tokenizer):
     bs_image, bs_text, clses = [], [], []
 
     time_start = time.time()
@@ -137,7 +137,7 @@ def compute_result_CrossModel(dataloader, imageNet, textHashNet,tokenizer):
         # image
         with torch.no_grad():
             images, labels = Variable(images).cuda(), Variable(labels).cuda()
-        image_hashCodes = imageNet.forward(images)
+        image_hashCodes = uniformer.forward_image(images)
         # image_hashCodes = torch.tanh(image_hashCodes)
 
         # text
@@ -146,7 +146,7 @@ def compute_result_CrossModel(dataloader, imageNet, textHashNet,tokenizer):
         # text_embeddings = output[0][:, 0, :]
         # text_hashCodes = textHashNet.forward(text_embeddings)
         # text_hashCodes = torch.tanh(text_hashCodes)
-        text_hashCodes = textHashNet.forward(tokens, segments, input_masks)
+        text_hashCodes = uniformer.forward_text(tokens, segments, input_masks)
 
         bs_image.append(image_hashCodes.data.cpu())
         bs_text.append(text_hashCodes.data.cpu())

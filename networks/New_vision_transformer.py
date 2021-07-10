@@ -301,7 +301,11 @@ class VisionTransformerHash(nn.Module):
                 self.transformer.embeddings.position_embeddings.copy_(np2th(posemb))
 
             for bname, block in self.transformer.encoder.named_children():
+                print(f"The bname is {bname}, ")
+
                 for uname, unit in block.named_children():
+                    print(f"the unname is {uname}")
+
                     unit.load_from(weights, n_block=uname)
 
 

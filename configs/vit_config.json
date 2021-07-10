@@ -2,6 +2,8 @@
     "dim": 768,
     "dim_ff": 3072,
     "n_layers": 12,
+    "n_text_layers": 8 ,
+    "n_common_layers" :4 ,
     "p_drop_attn": 0.1,
     "n_heads": 12,
     "p_drop_hidden": 0.1,
@@ -9,7 +11,7 @@
     "n_segments": 2,
     "vocab_size": 30522,
     "patch_size": 32,
-    "num_v_layers":12
+    "num_v_layers": 8
 
 }
 
